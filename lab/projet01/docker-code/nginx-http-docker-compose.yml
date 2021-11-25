@@ -1,0 +1,53 @@
+version: '3.9'
+services:
+   
+# ----------------------------------------------
+# nginx 1.21 : container creation
+# ----------------------------------------------
+ nginx:
+  build:
+   context: nginx/1.21
+   args:
+    USER_UID: 1010
+    GROUP_GID: 1010
+    UNAME: 'webadmin'
+  image: lab/nginx:1.21
+  hostname: nginx
+  container_name: 'nginx'
+  environment:
+    NGINX_SETUP: 'http'
+    NGINX_WEBSITE: 'myblog.fr'
+    DOCKER_DEBUG_FLAG: 'no'
+  healthcheck:
+       test: ['CMD', '/opt/nginx/scripts/docker-healthcheck.sh']
+       timeout: 5s
+       interval: 30s
+       start_period: 10s
+       retries: 3
+  tty: true
+  networks:
+     - lab
+  restart: 'always'
+  ports:
+   - '80:80' 
+  volumes:
+    - volume-data-shared:/opt/projet01/data-shared
+
+# ----------------------------------------------
+# network definition
+# ----------------------------------------------
+networks:
+   lab:
+     driver: bridge
+
+# ----------------------------------------------
+# volume for persistent data
+# ----------------------------------------------
+volumes:
+  volume-data-shared:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /lab/projet01/docker-data/data-shared
+       
