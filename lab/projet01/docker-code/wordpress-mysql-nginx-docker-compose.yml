@@ -1,0 +1,104 @@
+version: '3.8'
+services:
+
+# ----------------------------------------------
+# mysql 5.7 : container creation 
+# ----------------------------------------------
+ mysql:
+  image: mysql:5.7
+  hostname: mysql
+  container_name: 'mysql'
+  environment:
+      MYSQL_ROOT_PASSWORD: passwordtochange01
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: passwordtochange02
+  links:
+   - debian
+  depends_on:
+   - debian
+  tty: true
+  networks:
+     - lab
+  restart: 'always'
+  volumes:
+   - /lab/projet01/docker-data/data-mysql/db:/var/lib/mysql  
+   - volume-data-shared:/opt   
+
+# ----------------------------------------------
+# wordpress 5 : container creation 
+# ----------------------------------------------
+ wordpress:
+  image: wordpress:latest
+  hostname: wordpress
+  container_name: 'wordpress'
+  links:
+   - mysql
+  depends_on:
+      - mysql
+  tty: true
+  networks:
+     - lab
+  restart: always
+  environment:
+      WORDPRESS_DB_HOST: mysql:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: passwordtochange02
+      WORDPRESS_DB_NAME: wordpress
+  volumes:
+   - /lab/projet01/docker-data/data-wordpress/myblogfr:/var/www/html  
+   - volume-data-shared:/opt  
+   
+# ----------------------------------------------
+# nginx 1.21 : container creation
+# ----------------------------------------------
+ nginx:
+  build:
+   context: nginx/1.21
+   args:
+    USER_UID: 1010
+    GROUP_GID: 1010
+    UNAME: 'webadmin'
+  image: lab/nginx:1.21
+  hostname: nginx
+  container_name: 'nginx'
+  environment:
+    NGINX_SETUP: 'proxypass'
+    NGINX_WEBSITE: 'myblog.fr'
+    DOCKER_DEBUG_FLAG: 'no'
+  healthcheck:
+       test: ['CMD', '/opt/nginx/scripts/docker-healthcheck.sh']
+       timeout: 5s
+       interval: 30s
+       start_period: 10s
+       retries: 3
+  tty: true
+  links:
+   - wordpress
+   - debian
+  networks:
+     - lab
+  restart: 'always'
+  ports:
+   - '443:443'
+  volumes:
+    - volume-data-shared:/opt/projet01/data-shared
+    
+
+# ----------------------------------------------
+# networks
+# ----------------------------------------------
+networks:
+   lab:
+     driver: bridge
+
+# ----------------------------------------------
+# volume creation for persistent data
+# ----------------------------------------------
+volumes:
+  volume-data-shared:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /lab/projet01/docker-data/data-shared
